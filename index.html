@@ -2,51 +2,89 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>MyName World</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 60px;
-      line-height: 1.6;
-    }
-    input, button {
-      padding: 10px;
-      font-size: 16px;
-      margin-top: 10px;
-      display: block;
-      width: 300px;
-    }
-    button {
-      background-color: black;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    button:hover {
-      opacity: 0.85;
-    }
+    body { font-family: Arial, sans-serif; margin: 40px; max-width: 720px; }
+    h1 { margin-bottom: 6px; }
+    p { margin-top: 0; color: #333; }
+    .card { margin-top: 24px; padding: 18px; border: 1px solid #ddd; border-radius: 10px; }
+    label { display:block; margin: 12px 0 6px; font-weight: 600; }
+    input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
+    button { margin-top: 14px; padding: 10px 14px; border: 0; border-radius: 10px; font-size: 16px; cursor: pointer; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .row { display:flex; gap: 12px; }
+    .row > div { flex: 1; }
+    .hint { margin-top: 10px; color: #666; font-size: 14px; }
+    .error { margin-top: 10px; color: #b00020; font-size: 14px; }
   </style>
 </head>
 <body>
-
   <h1>MyName World</h1>
   <p>Turn your name into names from different cultures.</p>
 
-  <h2>Try it</h2>
+  <div class="card">
+    <div class="row">
+      <div>
+        <label for="name">Your name</label>
+        <input id="name" type="text" placeholder="e.g., Sophia" />
+      </div>
+      <div>
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="e.g., you@email.com" />
+      </div>
+    </div>
 
-  <form>
-    <label>Your Name</label>
-    <input type="text" placeholder="e.g. Michael" />
+    <button id="continueBtn">Continue → $0.89</button>
+    <div class="hint">After payment, we’ll generate your name in Chinese characters.</div>
+    <div id="error" class="error"></div>
+  </div>
 
-    <label>Email</label>
-    <input type="email" placeholder="you@example.com" />
+  <script>
+    const btn = document.getElementById("continueBtn");
+    const nameInput = document.getElementById("name");
+    const emailInput = document.getElementById("email");
+    const errorEl = document.getElementById("error");
 
-    <button type="button">Continue</button>
-  </form>
+    btn.addEventListener("click", async () => {
+      errorEl.textContent = "";
 
-  <p style="margin-top:20px; color: gray;">
-    🔒 We respect your privacy. No spam.
-  </p>
+      const name = nameInput.value.trim();
+      const email = emailInput.value.trim();
 
+      if (!name) {
+        errorEl.textContent = "Please enter your name.";
+        return;
+      }
+      if (!email) {
+        errorEl.textContent = "Please enter your email.";
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "Redirecting…";
+
+      try {
+        const res = await fetch("/api/create-checkout-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data?.error || "Failed to create checkout session.");
+        }
+
+        // Stripe Checkout URL
+        window.location.href = data.url;
+      } catch (err) {
+        errorEl.textContent = err.message;
+        btn.disabled = false;
+        btn.textContent = "Continue → $0.89";
+      }
+    });
+  </script>
 </body>
 </html>
