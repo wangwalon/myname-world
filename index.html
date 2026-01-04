@@ -3,10 +3,50 @@
 <head>
   <meta charset="UTF-8" />
   <title>MyName World</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 60px;
+      line-height: 1.6;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      margin-top: 10px;
+      display: block;
+      width: 300px;
+    }
+    button {
+      background-color: black;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      opacity: 0.85;
+    }
+  </style>
 </head>
 <body>
+
   <h1>MyName World</h1>
   <p>Turn your name into names from different cultures.</p>
-  <p>🚀 Site is live.</p>
+
+  <h2>Try it</h2>
+
+  <form>
+    <label>Your Name</label>
+    <input type="text" placeholder="e.g. Michael" />
+
+    <label>Email</label>
+    <input type="email" placeholder="you@example.com" />
+
+    <button type="button">Continue</button>
+  </form>
+
+  <p style="margin-top:20px; color: gray;">
+    🔒 We respect your privacy. No spam.
+  </p>
+
 </body>
 </html>
