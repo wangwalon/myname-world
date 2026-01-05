@@ -23,7 +23,8 @@ export default async function handler(req, res) {
       metadata: {
         name: name,
       },
-      success_url: "https://myname-world-m7xd.vercel.app/success.html",
+      success_url: "https://myname-world-m7xd.vercel.app/success.html?session_id={CHECKOUT_SESSION_ID}",
+
       cancel_url: "https://myname-world-m7xd.vercel.app",
     });
 
