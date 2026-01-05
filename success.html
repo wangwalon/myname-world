@@ -1,27 +1,318 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
-    <meta charset="utf-8" />
-    <title>Payment Successful</title>
+    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Payment Successful</title>
     <style>
-      body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:40px;background:#fff;}
-      .card{max-width:720px;margin:0 auto;border:1px solid #eee;border-radius:12px;padding:28px;}
-      h1{margin:0 0 12px;}
-      .muted{color:#666;line-height:1.6;}
-      .btn{display:inline-block;margin-top:18px;padding:10px 14px;border:1px solid #111;border-radius:10px;text-decoration:none;color:#111;}
+      :root {
+        --bg: #ffffff;
+        --text: #111827;
+        --muted: #6b7280;
+        --border: #e5e7eb;
+        --good: #16a34a;
+        --bad: #dc2626;
+        --chip: #f3f4f6;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        background: var(--bg);
+        color: var(--text);
+      }
+      .wrap {
+        max-width: 860px;
+        margin: 56px auto;
+        padding: 0 20px;
+      }
+      .card {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 24px;
+      }
+      h1 {
+        margin: 0 0 10px;
+        font-size: 34px;
+        letter-spacing: -0.02em;
+      }
+      .sub {
+        margin: 0 0 18px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 180px 1fr;
+        gap: 12px;
+        padding: 10px 0;
+        border-top: 1px solid var(--border);
+      }
+      .row:first-of-type {
+        border-top: none;
+        padding-top: 0;
+      }
+      .k {
+        color: var(--muted);
+      }
+      .v {
+        word-break: break-word;
+      }
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 14px;
+        background: var(--chip);
+      }
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--muted);
+      }
+      .dot.good {
+        background: var(--good);
+      }
+      .dot.bad {
+        background: var(--bad);
+      }
+      .actions {
+        margin-top: 18px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      a.btn {
+        display: inline-block;
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        text-decoration: none;
+        color: var(--text);
+        background: #fff;
+      }
+      a.btn.primary {
+        background: #111827;
+        color: #fff;
+        border-color: #111827;
+      }
+      .hint {
+        margin-top: 14px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      pre {
+        background: #0b1020;
+        color: #e5e7eb;
+        padding: 14px;
+        border-radius: 12px;
+        overflow: auto;
+        font-size: 12px;
+      }
+      .hidden { display: none; }
+      .error {
+        border: 1px solid #fecaca;
+        background: #fff1f2;
+        color: #991b1b;
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-top: 14px;
+      }
     </style>
   </head>
+
   <body>
-    <div class="card">
-      <h1>Payment Successful</h1>
-      <p class="muted">Thanks! We received your payment.</p>
-      <p class="muted">
-        We are generating your Chinese name now.<br/>
-        You will receive the result by email within <b>5–10 minutes</b>.
-      </p>
-      <p class="muted">If you don’t see it, please check Spam/Junk.</p>
-      <a class="btn" href="/">Back to Home</a>
+    <div class="wrap">
+      <div class="card">
+        <h1 id="title">Payment Successful</h1>
+        <p class="sub" id="subtitle">Fetching your order details…</p>
+
+        <div id="content">
+          <div class="row">
+            <div class="k">Status</div>
+            <div class="v">
+              <span class="status" id="statusChip">
+                <span class="dot" id="statusDot"></span>
+                <span id="statusText">Loading</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="k">Amount</div>
+            <div class="v" id="amount">—</div>
+          </div>
+
+          <div class="row">
+            <div class="k">Customer Email</div>
+            <div class="v" id="email">—</div>
+          </div>
+
+          <div class="row">
+            <div class="k">Name (metadata)</div>
+            <div class="v" id="metaName">—</div>
+          </div>
+
+          <div class="row">
+            <div class="k">Session ID</div>
+            <div class="v" id="sessionId">—</div>
+          </div>
+
+          <div class="row">
+            <div class="k">Payment Intent</div>
+            <div class="v" id="paymentIntent">—</div>
+          </div>
+
+          <div class="row">
+            <div class="k">Line items</div>
+            <div class="v" id="lineItems">—</div>
+          </div>
+        </div>
+
+        <div id="errBox" class="error hidden"></div>
+
+        <div class="actions">
+          <a class="btn primary" href="/" id="backHome">Back to Home</a>
+          <a class="btn" href="#" id="toggleRaw">Show raw JSON</a>
+        </div>
+
+        <div id="rawWrap" class="hidden">
+          <p class="hint">Raw response (for debugging):</p>
+          <pre id="raw"></pre>
+        </div>
+
+        <p class="hint">
+          Tip: your backend success_url should be like
+          <code>https://YOUR_DOMAIN/success.html?session_id={CHECKOUT_SESSION_ID}</code>
+        </p>
+      </div>
     </div>
+
+    <script>
+      function $(id) { return document.getElementById(id); }
+
+      function getSessionIdFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get("session_id") || "";
+      }
+
+      function formatMoney(amountMinor, currency) {
+        if (amountMinor == null || currency == null) return "—";
+        const amount = Number(amountMinor) / 100;
+        try {
+          return new Intl.NumberFormat(undefined, {
+            style: "currency",
+            currency: String(currency).toUpperCase(),
+          }).format(amount);
+        } catch {
+          return `${amount.toFixed(2)} ${String(currency).toUpperCase()}`;
+        }
+      }
+
+      function setStatus({paid, status, payment_status}) {
+        const dot = $("statusDot");
+        const text = $("statusText");
+        const title = $("title");
+        const subtitle = $("subtitle");
+
+        const ok = paid || payment_status === "paid";
+        if (ok) {
+          dot.classList.add("good");
+          text.textContent = `PAID (${status || "complete"})`;
+          title.textContent = "Payment Successful";
+          subtitle.textContent = "We received your payment. Order details are shown below.";
+        } else {
+          dot.classList.add("bad");
+          text.textContent = `${(payment_status || "unknown").toUpperCase()} (${status || "unknown"})`;
+          title.textContent = "Payment Not Completed";
+          subtitle.textContent = "We found the session, but payment is not marked as paid.";
+        }
+      }
+
+      function showError(message) {
+        const box = $("errBox");
+        box.textContent = message;
+        box.classList.remove("hidden");
+
+        $("statusDot").classList.add("bad");
+        $("statusText").textContent = "ERROR";
+        $("title").textContent = "Unable to load order details";
+        $("subtitle").textContent = "Please try again or contact support.";
+      }
+
+      function renderLineItems(session) {
+        // Your API response shows:
+        // { ..., line_items: [ { id, amount_total, currency, description, price:{...}, quantity } ] }
+        const li = session?.line_items;
+        if (!Array.isArray(li) || li.length === 0) return "—";
+
+        const lines = li.map((x, i) => {
+          const desc = x?.description || x?.price?.nickname || x?.price?.id || `Item ${i+1}`;
+          const qty = x?.quantity ?? 1;
+          const unit = x?.price?.unit_amount;
+          const currency = x?.currency || x?.price?.currency || session?.currency;
+          const unitStr = unit != null ? formatMoney(unit, currency) : "—";
+          return `${i + 1}. ${desc} × ${qty} (unit: ${unitStr})`;
+        });
+        return lines.join("\n");
+      }
+
+      async function fetchSession(sessionId) {
+        // IMPORTANT: keep this path consistent with your existing endpoint
+        const url = `/api/get-checkout-session?session_id=${encodeURIComponent(sessionId)}`;
+        const res = await fetch(url, { method: "GET" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const msg = data?.error || `Request failed (${res.status})`;
+          throw new Error(msg);
+        }
+        return data;
+      }
+
+      (async function init() {
+        const sessionId = getSessionIdFromUrl();
+        $("sessionId").textContent = sessionId || "—";
+
+        // Make Back to Home safer: if your homepage is not root, change here.
+        $("backHome").setAttribute("href", "/");
+
+        const toggle = $("toggleRaw");
+        toggle.addEventListener("click", (e) => {
+          e.preventDefault();
+          $("rawWrap").classList.toggle("hidden");
+          toggle.textContent = $("rawWrap").classList.contains("hidden") ? "Show raw JSON" : "Hide raw JSON";
+        });
+
+        if (!sessionId) {
+          showError("Missing session_id in URL. The success_url must include ?session_id={CHECKOUT_SESSION_ID}");
+          return;
+        }
+
+        try {
+          const session = await fetchSession(sessionId);
+
+          // Fill fields
+          setStatus({
+            paid: session?.payment_status === "paid",
+            status: session?.status,
+            payment_status: session?.payment_status,
+          });
+
+          $("amount").textContent = formatMoney(session?.amount_total, session?.currency);
+          $("email").textContent = session?.customer_email || "—";
+          $("metaName").textContent = session?.metadata?.name || "—";
+          $("paymentIntent").textContent = session?.payment_intent || session?.metadata?.payment_intent || "—";
+          $("lineItems").textContent = renderLineItems(session);
+
+          $("raw").textContent = JSON.stringify(session, null, 2);
+        } catch (err) {
+          showError(err?.message || "Unknown error");
+        }
+      })();
+    </script>
   </body>
 </html>
