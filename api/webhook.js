@@ -1,3 +1,5 @@
+import { google } from "googleapis";
+
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -8,6 +10,12 @@ export default async function handler(req, res) {
   }
 
   let event;
+const auth = new google.auth.GoogleAuth({
+  credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
+  scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+});
+
+const sheets = google.sheets({ version: "v4", auth });
 
   try {
     event = req.body; // 直接用 JSON body
