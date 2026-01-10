@@ -1,8 +1,8 @@
 {
   "name": "myname-world",
   "private": true,
-  "type": "module",
   "dependencies": {
-    "stripe": "^14.0.0"
+    "stripe": "^14.0.0",
+    "googleapis": "^144.0.0"
   }
 }
