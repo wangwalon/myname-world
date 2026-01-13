@@ -1,6 +1,5 @@
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -29,6 +28,14 @@ export default async function handler(req, res) {
       metadata: session.metadata,
       payment_intent: session.payment_intent?.id,
       line_items: session.line_items?.data || [],
+      await sendDeliveryEmail({
+  to: email,
+  chineseName: name || "—",
+  pinyin: "待补充",
+  meaning: "Carefully chosen based on sound and meaning",
+  downloadLink: "https://your-download-link.com",
+});
+
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
