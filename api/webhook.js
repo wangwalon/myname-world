@@ -1,3 +1,52 @@
+import { Resend } from "resend";
+const resend = new Resend(process.env.RESEND_API_KEY);
+async function sendDeliveryEmail({
+  to,
+  chineseName,
+  pinyin,
+  meaning,
+  downloadLink,
+}) {
+  if (!to) return;
+
+  await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL,
+    to,
+    subject: "Your Chinese Name Is Ready",
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height:1.6;">
+        <p>Hello,</p>
+
+        <p>Thank you for your order with <strong>My Name World</strong>.</p>
+
+        <p>We’re excited to let you know that your personalized Chinese name is ready.</p>
+
+        <hr />
+
+        <p><strong>Your Custom Chinese Name</strong></p>
+        <p>
+          <strong>Name:</strong> ${chineseName}<br/>
+          <strong>Pronunciation:</strong> ${pinyin}<br/>
+          <strong>Meaning:</strong> ${meaning}
+        </p>
+
+        <p>
+          <strong>Download your files:</strong><br/>
+          <a href="${downloadLink}">${downloadLink}</a>
+        </p>
+
+        <p>If you have any questions, just reply to this email.</p>
+
+        <p>
+          Warm regards,<br/>
+          <strong>My Name World</strong><br/>
+          hello@mynameworld.com
+        </p>
+      </div>
+    `,
+  });
+}
+
 // api/webhook.js
 import Stripe from "stripe";
 import { google } from "googleapis";
