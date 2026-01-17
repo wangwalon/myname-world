@@ -93,6 +93,32 @@ async function updateOrderStatus(sheets, rowIndex, status, error = "") {
   });
 }
 
+function generateNamePNG({ chineseName, englishName }) {
+  const width = 2000;
+  const height = 2000;
+
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext("2d");
+
+  // 背景白色（如果你要透明背景，把这三行删掉即可）
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+
+  // 中文名（大字）
+  ctx.fillStyle = "#000000";
+  ctx.font = "bold 200px serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(chineseName || "—", width / 2, height / 2 - 40);
+
+  // 英文名（小字）
+  ctx.font = "60px sans-serif";
+  ctx.fillText(englishName || "", width / 2, height / 2 + 120);
+
+  // 返回 PNG Buffer（后面用于上传/邮件附件）
+  return canvas.toBuffer("image/png");
+}
+
 // -------- Main webhook handler --------
 export default async function handler(req, res) {
   if (req.method !== "POST") {
