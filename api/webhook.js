@@ -2,9 +2,14 @@ import Stripe from "stripe";
 import getRawBody from "raw-body";
 import { google } from "googleapis";
 import { createCanvas } from "@napi-rs/canvas";
+import { put } from "@vercel/blob";
+import { Resend } from "resend";
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16",
 });
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 
 const SHEET_ID = process.env.SHEET_ID;
 const SHEET_NAME = process.env.SHEET_NAME || "Orders";
@@ -179,7 +184,48 @@ export default async function handler(req, res) {
   const rowIndex = await findRowIndexBySessionId(sheets, sessionId);
 
   try {
-    // TODO（任务B会填充）：生成PNG + 上传 + 发邮件
+    try {
+  // 1) 从 metadata 取内容（确保你在 create-checkout-session.js 里有写入 metadata）
+  const chineseName = session.metadata?.chinese_name || "—";
+  const englishName = session.metadata?.english_name || "";
+
+  // 2) 生成 PNG Buffer
+  const pngBuffer = generateNamePNG({ chineseName, englishName });
+
+  // 3) 上传到 Vercel Blob（返回公开 URL）
+  const blob = await put(`orders/${session.id}.png`, pngBuffer, {
+    access: "public",
+    contentType: "image/png",
+  });
+  const downloadUrl = blob.url;
+
+  // 4) 发送交付邮件（Resend）
+  await resend.emails.send({
+    from: "MyName World <deliver@yourdomain.com>",
+    to: email,
+    subject: "Your PNG is ready",
+    html: `
+      <p>Your file is ready.</p>
+      <p><strong>Chinese name:</strong> ${chineseName}</p>
+      <p><a href="${downloadUrl}" target="_blank">Download PNG</a></p>
+    `,
+  });
+
+  // 5) 更新状态：delivered
+  await updateOrderStatus(sheets, rowIndex, "delivered", "");
+
+  res.status(200).json({ received: true, delivered: true, url: downloadUrl });
+} catch (err) {
+  console.error("❌ Delivery failed:", err);
+  await updateOrderStatus(
+    sheets,
+    rowIndex,
+    "failed",
+    err?.message || "unknown_error"
+  );
+  res.status(500).json({ received: true, delivered: false });
+}
+
     // await deliver(session);
 
     await updateOrderStatus(sheets, rowIndex, "delivered", "");
