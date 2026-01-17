@@ -4,6 +4,7 @@
   "type": "module",
   "dependencies": {
     "@napi-rs/canvas": "^0.1.56",
+    "@vercel/blob": "^0.24.1",
     "stripe": "^14.0.0",
     "googleapis": "^140.0.0",
     "raw-body": "^2.5.2",
