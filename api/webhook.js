@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 import getRawBody from "raw-body";
 import { google } from "googleapis";
-
+import { createCanvas } from "@napi-rs/canvas";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16",
 });
