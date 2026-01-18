@@ -4,6 +4,10 @@ import { google } from "googleapis";
 import { createCanvas } from "@napi-rs/canvas";
 import { put } from "@vercel/blob";
 
+export const config = {
+  api: { bodyParser: false },
+};
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16",
 });
@@ -87,9 +91,10 @@ async function updateOrderStatus(sheets, rowIndex, status, error = "") {
   });
 }
 
-// -------- PNG generator (Arial safe) --------
+// -------- PNG generator (Debug + log) --------
 function generateNamePNG({ chineseName, englishName }) {
-  console.log("🔥 generateNamePNG CALLED") {
+  console.log("🔥 generateNamePNG CALLED");
+
   const width = 2000;
   const height = 2000;
 
@@ -113,8 +118,10 @@ function generateNamePNG({ chineseName, englishName }) {
   ctx.fillText("DEBUG: PNG GENERATED", width / 2, 60);
 
   // 兜底：如果两者都空，就给默认值
-  const cn = (chineseName && chineseName.trim()) ? chineseName : "测试";
-  const en = (englishName && englishName.trim()) ? englishName : "Test";
+  const cn =
+    chineseName && String(chineseName).trim() ? String(chineseName) : "测试";
+  const en =
+    englishName && String(englishName).trim() ? String(englishName) : "Test";
 
   // 中文（Arial 不支持中文时可能画不出来，这是正常现象）
   ctx.font = "bold 220px Arial, sans-serif";
@@ -127,7 +134,6 @@ function generateNamePNG({ chineseName, englishName }) {
 
   return canvas.toBuffer("image/png");
 }
-
 
 // -------- Main webhook handler --------
 export default async function handler(req, res) {
