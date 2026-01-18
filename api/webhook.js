@@ -95,29 +95,38 @@ function generateNamePNG({ chineseName, englishName }) {
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
+  // 背景白色
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
+  // Debug 边框（确保你能看到“确实画了东西”）
+  ctx.strokeStyle = "#ff0000";
+  ctx.lineWidth = 10;
+  ctx.strokeRect(20, 20, width - 40, height - 40);
+
+  // 永远画一行英文 debug（确保不会“全空”）
   ctx.fillStyle = "#000000";
+  ctx.font = "bold 80px Arial, sans-serif";
   ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillText("DEBUG: PNG GENERATED", width / 2, 60);
+
+  // 兜底：如果两者都空，就给默认值
+  const cn = (chineseName && chineseName.trim()) ? chineseName : "测试";
+  const en = (englishName && englishName.trim()) ? englishName : "Test";
+
+  // 中文（Arial 不支持中文时可能画不出来，这是正常现象）
+  ctx.font = "bold 220px Arial, sans-serif";
   ctx.textBaseline = "middle";
+  ctx.fillText(cn, width / 2, height / 2 - 80);
 
-  // ✅ serverless 安全：不要 serif/sans-serif/bold
-  ctx.font = "200px Arial";
-  ctx.fillText(chineseName || "—", width / 2, height / 2 - 40);
-
-  ctx.font = "60px Arial";
-  ctx.fillText(englishName || "", width / 2, height / 2 + 120);
+  // 英文（一定能画出来）
+  ctx.font = "100px Arial, sans-serif";
+  ctx.fillText(en, width / 2, height / 2 + 180);
 
   return canvas.toBuffer("image/png");
 }
 
-// -------- Next.js API Route config (关键：禁用默认 body 解析) --------
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
 
 // -------- Main webhook handler --------
 export default async function handler(req, res) {
