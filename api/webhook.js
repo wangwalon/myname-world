@@ -87,47 +87,48 @@ async function updateOrderStatus(sheets, rowIndex, status, error = "") {
   });
 }
 
-// -------- PNG generator (ENGLISH ONLY - DEBUG SAFE) --------
-function generateNamePNG({ englishName }) {
-  // 🔥 关键确认点：如果你在 Vercel Logs 里看不到这行，说明根本没跑到这份代码
+// -------- PNG generator (EN only DEBUG) --------
+function generateNamePNG({ chineseName, englishName }) {
   console.log("🔥 generateNamePNG CALLED");
 
-  const width = 1200;
-  const height = 1200;
+  const width = 2000;
+  const height = 2000;
 
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
-  // 1️⃣ 背景：纯白
+  // 背景白色
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
-  // 2️⃣ 红色边框（视觉确认画布真的被画过）
+  // Debug 红框（确保“确实画了东西”）
   ctx.strokeStyle = "#ff0000";
-  ctx.lineWidth = 12;
+  ctx.lineWidth = 10;
   ctx.strokeRect(20, 20, width - 40, height - 40);
 
-  // 3️⃣ 顶部 DEBUG 文本（无条件显示）
+  // 永远画一行英文 DEBUG（目标：无论如何都应该看到）
   ctx.fillStyle = "#000000";
-  ctx.font = "bold 64px Arial, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  ctx.fillText("DEBUG: CANVAS WORKS", width / 2, 40);
+  ctx.font = "bold 110px sans-serif";
+  ctx.fillText("DEBUG: PNG GENERATED", width / 2, 90);
 
-  // 4️⃣ 英文名（唯一业务文本）
-  const name = (englishName && englishName.trim()) ? englishName : "MICHAEL";
-
-  ctx.font = "bold 140px Arial, sans-serif";
+  // 英文名（一定要能看到）
+  const en = (englishName && String(englishName).trim()) ? String(englishName).trim() : "Test";
   ctx.textBaseline = "middle";
-  ctx.fillText(name, width / 2, height / 2);
+  ctx.font = "bold 160px sans-serif";
+  ctx.fillText(en, width / 2, height / 2);
 
-  // 5️⃣ 底部再次确认
-  ctx.font = "40px Arial, sans-serif";
-  ctx.textBaseline = "bottom";
-  ctx.fillText("VERCEL CANVAS OK", width / 2, height - 40);
+  // ✅ 临时：注释掉中文绘制（验证“是否是字体/中文导致不可见”）
+  // const cn = (chineseName && String(chineseName).trim()) ? String(chineseName).trim() : "测试";
+  // ctx.font = "bold 220px sans-serif";
+  // ctx.fillText(cn, width / 2, height / 2 - 220);
 
-  return canvas.toBuffer("image/png");
+  const buf = canvas.toBuffer("image/png");
+  console.log("✅ PNG bytes:", buf.length);
+  return buf;
 }
+
 
 
 // -------- Main webhook handler --------
