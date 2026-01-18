@@ -88,8 +88,9 @@ async function updateOrderStatus(sheets, rowIndex, status, error = "") {
 }
 
 // -------- PNG generator (ENGLISH ONLY VERIFY) --------
-function generateNamePNG({ englishName }) {
-  console.log("🔥 generateNamePNG CALLED (EN ONLY)");
+// -------- PNG generator (ENGLISH ONLY / DEBUG VERSION) --------
+function generateNamePNG({ chineseName, englishName }) {
+  console.log("🔥 generateNamePNG CALLED");
 
   const width = 2000;
   const height = 2000;
@@ -97,31 +98,34 @@ function generateNamePNG({ englishName }) {
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
-  // 背景白色
+  // 1️⃣ 白色背景
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
-  // 红色边框（确保“画布确实画了东西”）
+  // 2️⃣ 红色边框（肉眼确认：不是空白图）
   ctx.strokeStyle = "#ff0000";
-  ctx.lineWidth = 10;
-  ctx.strokeRect(20, 20, width - 40, height - 40);
+  ctx.lineWidth = 12;
+  ctx.strokeRect(40, 40, width - 80, height - 80);
 
-  // 顶部 debug（必定可见）
+  // 3️⃣ 顶部 Debug 文本（必定可见）
   ctx.fillStyle = "#000000";
   ctx.font = "bold 90px Arial, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  ctx.fillText("DEBUG: ENGLISH ONLY", width / 2, 80);
+  ctx.fillText("DEBUG PNG GENERATED", width / 2, 80);
 
-  // 兜底英文（必定可见）
-  const en = (englishName && englishName.trim()) ? englishName : "Michael";
+  // 4️⃣ 只画英文（避免字体问题）
+  const en = (englishName && englishName.trim()) ? englishName : "MICHAEL";
 
-  // 英文主视觉居中（必定可见）
-  ctx.font = "bold 180px Arial, sans-serif";
+  ctx.font = "bold 260px Arial, sans-serif";
   ctx.textBaseline = "middle";
   ctx.fillText(en, width / 2, height / 2);
 
-  return canvas.toBuffer("image/png");
+  // 5️⃣ 返回 PNG
+  const buffer = canvas.toBuffer("image/png");
+  console.log("🔥 PNG size:", buffer.length);
+
+  return buffer;
 }
 
 // -------- Main webhook handler --------
