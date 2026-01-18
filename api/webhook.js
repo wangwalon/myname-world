@@ -87,46 +87,48 @@ async function updateOrderStatus(sheets, rowIndex, status, error = "") {
   });
 }
 
-// -------- PNG generator (ENGLISH ONLY VERIFY) --------
-// -------- PNG generator (ENGLISH ONLY / DEBUG VERSION) --------
-function generateNamePNG({ chineseName, englishName }) {
+// -------- PNG generator (ENGLISH ONLY - DEBUG SAFE) --------
+function generateNamePNG({ englishName }) {
+  // 🔥 关键确认点：如果你在 Vercel Logs 里看不到这行，说明根本没跑到这份代码
   console.log("🔥 generateNamePNG CALLED");
 
-  const width = 2000;
-  const height = 2000;
+  const width = 1200;
+  const height = 1200;
 
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
-  // 1️⃣ 白色背景
+  // 1️⃣ 背景：纯白
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
-  // 2️⃣ 红色边框（肉眼确认：不是空白图）
+  // 2️⃣ 红色边框（视觉确认画布真的被画过）
   ctx.strokeStyle = "#ff0000";
   ctx.lineWidth = 12;
-  ctx.strokeRect(40, 40, width - 80, height - 80);
+  ctx.strokeRect(20, 20, width - 40, height - 40);
 
-  // 3️⃣ 顶部 Debug 文本（必定可见）
+  // 3️⃣ 顶部 DEBUG 文本（无条件显示）
   ctx.fillStyle = "#000000";
-  ctx.font = "bold 90px Arial, sans-serif";
+  ctx.font = "bold 64px Arial, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  ctx.fillText("DEBUG PNG GENERATED", width / 2, 80);
+  ctx.fillText("DEBUG: CANVAS WORKS", width / 2, 40);
 
-  // 4️⃣ 只画英文（避免字体问题）
-  const en = (englishName && englishName.trim()) ? englishName : "MICHAEL";
+  // 4️⃣ 英文名（唯一业务文本）
+  const name = (englishName && englishName.trim()) ? englishName : "MICHAEL";
 
-  ctx.font = "bold 260px Arial, sans-serif";
+  ctx.font = "bold 140px Arial, sans-serif";
   ctx.textBaseline = "middle";
-  ctx.fillText(en, width / 2, height / 2);
+  ctx.fillText(name, width / 2, height / 2);
 
-  // 5️⃣ 返回 PNG
-  const buffer = canvas.toBuffer("image/png");
-  console.log("🔥 PNG size:", buffer.length);
+  // 5️⃣ 底部再次确认
+  ctx.font = "40px Arial, sans-serif";
+  ctx.textBaseline = "bottom";
+  ctx.fillText("VERCEL CANVAS OK", width / 2, height - 40);
 
-  return buffer;
+  return canvas.toBuffer("image/png");
 }
+
 
 // -------- Main webhook handler --------
 export default async function handler(req, res) {
