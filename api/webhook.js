@@ -89,6 +89,7 @@ async function updateOrderStatus(sheets, rowIndex, status, error = "") {
 
 // -------- PNG generator (Arial safe) --------
 function generateNamePNG({ chineseName, englishName }) {
+  console.log("🔥 generateNamePNG CALLED") {
   const width = 2000;
   const height = 2000;
 
