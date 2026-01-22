@@ -6,6 +6,31 @@ import getRawBody from "raw-body";
 import { google } from "googleapis";
 import { createCanvas, GlobalFonts } from "@napi-rs/canvas";
 import { put } from "@vercel/blob";
+import path from "path";
+import { registerFont } from "@napi-rs/canvas";
+
+// 字体路径（指向 public/fonts）
+const FONT_DIR = path.join(process.cwd(), "public", "fonts");
+
+// 注册英文字体
+registerFont(path.join(FONT_DIR, "NotoSans_Condensed-Regular.ttf"), {
+  family: "NotoSansEN",
+  weight: "400",
+});
+registerFont(path.join(FONT_DIR, "NotoSans_Condensed-Bold.ttf"), {
+  family: "NotoSansEN",
+  weight: "700",
+});
+
+// 注册中文字体
+registerFont(path.join(FONT_DIR, "NotoSansSC-Regular.ttf"), {
+  family: "NotoSansSC",
+  weight: "400",
+});
+registerFont(path.join(FONT_DIR, "NotoSansSC-Bold.ttf"), {
+  family: "NotoSansSC",
+  weight: "700",
+});
 
 export const config = {
   api: { bodyParser: false }, // Stripe webhook 必须关
