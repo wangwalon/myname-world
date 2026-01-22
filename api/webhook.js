@@ -1,36 +1,11 @@
 // /pages/api/webhook.js  (Next.js pages router)
-// 如果你用的是 app router 的 route.js，我也可以给对应版本；先按你当前 /api/webhook 的写法来。
 
 import Stripe from "stripe";
 import getRawBody from "raw-body";
 import { google } from "googleapis";
-import { createCanvas, GlobalFonts } from "@napi-rs/canvas";
+import { createCanvas, registerFont } from "@napi-rs/canvas";
 import { put } from "@vercel/blob";
 import path from "path";
-import { registerFont } from "@napi-rs/canvas";
-
-// 字体路径（指向 public/fonts）
-const FONT_DIR = path.join(process.cwd(), "public", "fonts");
-
-// 注册英文字体
-registerFont(path.join(FONT_DIR, "NotoSans_Condensed-Regular.ttf"), {
-  family: "NotoSansEN",
-  weight: "400",
-});
-registerFont(path.join(FONT_DIR, "NotoSans_Condensed-Bold.ttf"), {
-  family: "NotoSansEN",
-  weight: "700",
-});
-
-// 注册中文字体
-registerFont(path.join(FONT_DIR, "NotoSansSC-Regular.ttf"), {
-  family: "NotoSansSC",
-  weight: "400",
-});
-registerFont(path.join(FONT_DIR, "NotoSansSC-Bold.ttf"), {
-  family: "NotoSansSC",
-  weight: "700",
-});
 
 export const config = {
   api: { bodyParser: false }, // Stripe webhook 必须关
@@ -44,7 +19,39 @@ const SHEET_ID = process.env.SHEET_ID;
 const SHEET_NAME = process.env.SHEET_NAME || "orders_state";
 const SA_JSON = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
 
-// ---------- Google Sheets ----------
+// ---------------- Fonts (2.3.2) ----------------
+const FONT_DIR = path.join(process.cwd(), "public", "fonts");
+let fontsReady = false;
+
+function ensureFontsRegistered() {
+  if (fontsReady) return;
+
+  // 你仓库里实际存在的文件名（区分大小写）
+  // - 英文：NotoSans_Condensed-*.ttf
+  // - 中文：NotoSansSC-*.ttf
+  registerFont(path.join(FONT_DIR, "NotoSans_Condensed-Regular.ttf"), {
+    family: "NotoSansEN",
+    weight: "400",
+  });
+  registerFont(path.join(FONT_DIR, "NotoSans_Condensed-Bold.ttf"), {
+    family: "NotoSansEN",
+    weight: "700",
+  });
+
+  registerFont(path.join(FONT_DIR, "NotoSansSC-Regular.ttf"), {
+    family: "NotoSansSC",
+    weight: "400",
+  });
+  registerFont(path.join(FONT_DIR, "NotoSansSC-Bold.ttf"), {
+    family: "NotoSansSC",
+    weight: "700",
+  });
+
+  console.log("🔥 Fonts registered from:", FONT_DIR);
+  fontsReady = true;
+}
+
+// ---------------- Google Sheets helpers ----------------
 function getSheetsClient() {
   if (!SA_JSON) throw new Error("Missing GOOGLE_SERVICE_ACCOUNT_JSON");
   if (!SHEET_ID) throw new Error("Missing SHEET_ID");
@@ -115,81 +122,53 @@ async function updateOrderStatus(sheets, rowIndex, status, error = "") {
   });
 }
 
-// ---------- Fonts (must exist in repo) ----------
-let fontsReady = false;
-function ensureFontsLoaded() {
-  if (fontsReady) return;
-
-  // 你需要把字体文件放到：/public/fonts/
-  // 文件名必须和这里一致（区分大小写）
-  const ok1 = GlobalFonts.registerFromPath(
-    process.cwd() + "/public/fonts/NotoSans-Regular.ttf",
-    "NotoSans"
-  );
-  const ok2 = GlobalFonts.registerFromPath(
-    process.cwd() + "/public/fonts/NotoSans-Bold.ttf",
-    "NotoSansBold"
-  );
-  const ok3 = GlobalFonts.registerFromPath(
-    process.cwd() + "/public/fonts/NotoSansSC-Regular.otf",
-    "NotoSansSC"
-  );
-  const ok4 = GlobalFonts.registerFromPath(
-    process.cwd() + "/public/fonts/NotoSansSC-Bold.otf",
-    "NotoSansSCBold"
-  );
-
-  console.log("🧩 Fonts loaded:", { ok1, ok2, ok3, ok4 });
-  console.log("🧩 Font families:", GlobalFonts.families);
-
-  fontsReady = true;
-}
-
-// ---------- PNG generator ----------
+// ---------------- PNG generator (2.3.3 + 2.3.4) ----------------
 function generateNamePNG({ chineseName, englishName }) {
   console.log("🔥 generateNamePNG CALLED");
-
-  ensureFontsLoaded();
+  ensureFontsRegistered();
 
   const width = 2000;
   const height = 2000;
+
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
-  // white bg
+  // 背景白色
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
-  // red border (always visible)
+  // 红色边框（最小可见 Debug）
   ctx.strokeStyle = "#ff0000";
   ctx.lineWidth = 16;
   ctx.strokeRect(40, 40, width - 80, height - 80);
 
-  // always-visible debug line (English)
+  // 永远可见的 debug 英文行（用已注册的英文族）
   ctx.fillStyle = "#000000";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  ctx.font = "bold 80px NotoSansBold, Arial, sans-serif";
+  ctx.font = "700 80px NotoSansEN";
   ctx.fillText("DEBUG: PNG GENERATED", width / 2, 80);
 
-  const cn = (chineseName && chineseName.trim()) ? chineseName.trim() : "测试中文";
-  const en = (englishName && englishName.trim()) ? englishName.trim() : "Test English";
+  const cn =
+    chineseName && chineseName.trim() ? chineseName.trim() : "测试中文";
+  const en =
+    englishName && englishName.trim() ? englishName.trim() : "Test English";
 
-// 英文
-ctx.font = "700 100px NotoSansEN";
-ctx.fillText(englishName || "Test", width / 2, height / 2 + 180);
+  // 中文（明确使用中文族）
+  ctx.textBaseline = "middle";
+  ctx.font = "700 220px NotoSansSC";
+  ctx.fillText(cn, width / 2, height / 2 - 80);
 
-// 中文
-ctx.font = "700 220px NotoSansSC";
-ctx.fillText(chineseName || "测试", width / 2, height / 2 - 80);
+  // 英文（明确使用英文族）
+  ctx.font = "700 100px NotoSansEN";
+  ctx.fillText(en, width / 2, height / 2 + 180);
 
   const buf = canvas.toBuffer("image/png");
   console.log("✅ PNG generated bytes:", buf.length);
-
   return buf;
 }
 
-// ---------- Main webhook ----------
+// ---------------- Main webhook ----------------
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
@@ -222,14 +201,18 @@ export default async function handler(req, res) {
 
   const sheets = getSheetsClient();
 
-  // —— 仍然写表，但【调试阶段不再因为 delivered/duplicate 直接 return】——
+  // —— 调试阶段：仍然写表，但不因为 delivered/duplicate 直接 return —— //
   let rowIndex = await findRowIndexBySessionId(sheets, sessionId);
   if (!rowIndex) {
     await appendOrderRow(sheets, { sessionId, email, status: "processing" });
     rowIndex = await findRowIndexBySessionId(sheets, sessionId);
   } else {
     const status = await getStatusByRow(sheets, rowIndex);
-    console.log("⚠️ existingRow status:", status, " (debug mode: will still generate)");
+    console.log(
+      "⚠️ existingRow status:",
+      status,
+      "(debug mode: will still generate)"
+    );
     await updateOrderStatus(sheets, rowIndex, "processing", "");
   }
 
@@ -242,7 +225,7 @@ export default async function handler(req, res) {
     const blob = await put(`orders/${sessionId}.png`, pngBuffer, {
       access: "public",
       contentType: "image/png",
-      addRandomSuffix: true, // 防止同名覆盖导致你一直打开旧图
+      addRandomSuffix: true, // 防止同名覆盖导致一直打开旧图
     });
 
     console.log("✅ Blob URL:", blob.url);
