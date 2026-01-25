@@ -1,10 +1,13 @@
 // api/webhook.js  (Vercel Serverless Function: /api/webhook)
-// ✅ 匹配你仓库字体：
+// Fonts expected in repo:
 // - public/fonts/NotoSans_Condensed-Regular.ttf
 // - public/fonts/NotoSans_Condensed-Bold.ttf
 // - public/fonts/NotoSansSC-Regular.ttf
 // - public/fonts/NotoSansSC-Bold.ttf
-// /pages/api/webhook.js  (Next.js pages router)
+
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 import Stripe from "stripe";
 import getRawBody from "raw-body";
@@ -22,10 +25,13 @@ const SHEET_ID = process.env.SHEET_ID;
 const SHEET_NAME = process.env.SHEET_NAME || "orders_state";
 const SA_JSON = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
 
-// -------------------- Fonts (from repo public/fonts) --------------------
-const FONT_DIR = path.join(process.cwd(), "public", "fonts");
+// -------------------- Fonts (single declaration ONLY) --------------------
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const FONT_DIR = path.join(__dirname, "..", "public", "fonts");
 
 let fontsReady = false;
+
 function ensureFontsLoaded() {
   if (fontsReady) return;
 
@@ -36,7 +42,7 @@ function ensureFontsLoaded() {
     "NotoSansSC-Bold.ttf",
   ];
 
-  // 1) 先检查文件是否真的存在（日志里一眼看穿“路径不对/没提交”）
+  // 1) Check font files exist
   for (const f of files) {
     const p = path.join(FONT_DIR, f);
     if (!fs.existsSync(p)) {
@@ -45,7 +51,7 @@ function ensureFontsLoaded() {
     }
   }
 
-  // 2) 注册字体（family 名称后面 canvas ctx.font 会用到）
+  // 2) Register fonts (family names used in ctx.font)
   registerFont(path.join(FONT_DIR, "NotoSans_Condensed-Regular.ttf"), {
     family: "NotoSansEN",
     weight: "400",
@@ -70,39 +76,6 @@ function ensureFontsLoaded() {
 }
 
 // -------------------- Google Sheets helpers --------------------
-// ---------------- Fonts (2.3.2) ----------------
-const FONT_DIR = path.join(process.cwd(), "public", "fonts");
-let fontsReady = false;
-
-function ensureFontsRegistered() {
-  if (fontsReady) return;
-
-  // 你仓库里实际存在的文件名（区分大小写）
-  // - 英文：NotoSans_Condensed-*.ttf
-  // - 中文：NotoSansSC-*.ttf
-  registerFont(path.join(FONT_DIR, "NotoSans_Condensed-Regular.ttf"), {
-    family: "NotoSansEN",
-    weight: "400",
-  });
-  registerFont(path.join(FONT_DIR, "NotoSans_Condensed-Bold.ttf"), {
-    family: "NotoSansEN",
-    weight: "700",
-  });
-
-  registerFont(path.join(FONT_DIR, "NotoSansSC-Regular.ttf"), {
-    family: "NotoSansSC",
-    weight: "400",
-  });
-  registerFont(path.join(FONT_DIR, "NotoSansSC-Bold.ttf"), {
-    family: "NotoSansSC",
-    weight: "700",
-  });
-
-  console.log("🔥 Fonts registered from:", FONT_DIR);
-  fontsReady = true;
-}
-
-// ---------------- Google Sheets helpers ----------------
 function getSheetsClient() {
   if (!SA_JSON) throw new Error("Missing GOOGLE_SERVICE_ACCOUNT_JSON");
   if (!SHEET_ID) throw new Error("Missing SHEET_ID");
@@ -176,10 +149,6 @@ async function updateOrderStatus(sheets, rowIndex, status, error = "") {
 // -------------------- PNG generator --------------------
 function generateNamePNG({ chineseName, englishName, sessionId }) {
   ensureFontsLoaded();
-// ---------------- PNG generator (2.3.3 + 2.3.4) ----------------
-function generateNamePNG({ chineseName, englishName }) {
-  console.log("🔥 generateNamePNG CALLED");
-  ensureFontsRegistered();
 
   const width = 2000;
   const height = 2000;
@@ -188,41 +157,32 @@ function generateNamePNG({ chineseName, englishName }) {
   const ctx = canvas.getContext("2d");
 
   // background
-  // 背景白色
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
-  // red border (debug)
-  // 红色边框（最小可见 Debug）
+  // debug border
   ctx.strokeStyle = "#ff0000";
   ctx.lineWidth = 16;
   ctx.strokeRect(40, 40, width - 80, height - 80);
 
-  // 永远可见的 debug 英文行（用已注册的英文族）
-  // header debug
+  // debug header
   ctx.fillStyle = "#000000";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  ctx.font = "700 80px NotoSansEN";
-  ctx.fillText("DEBUG: PNG GENERATED", width / 2, 80);
   ctx.font = "700 72px NotoSansEN, Arial, sans-serif";
   ctx.fillText("DEBUG: WEBHOOK PNG GENERATED", width / 2, 80);
+
+  // debug session line
+  ctx.font = "400 44px NotoSansEN, Arial, sans-serif";
+  ctx.fillText(`session: ${sessionId || "-"}`, width / 2, 170);
 
   const cn =
     chineseName && chineseName.trim() ? chineseName.trim() : "测试中文";
   const en =
     englishName && englishName.trim() ? englishName.trim() : "Test English";
-  // small debug info
-  ctx.font = "400 44px NotoSansEN, Arial, sans-serif";
-  ctx.fillText(`session: ${sessionId || "-"}`, width / 2, 170);
-
-  const cn = (chineseName || "测试").trim();
-  const en = (englishName || "Test").trim();
 
   // Chinese (big)
-  // 中文（明确使用中文族）
   ctx.textBaseline = "middle";
-  ctx.font = "700 220px NotoSansSC";
   ctx.font = "700 240px NotoSansSC, sans-serif";
   ctx.fillText(cn, width / 2, height / 2 - 80);
 
@@ -230,17 +190,11 @@ function generateNamePNG({ chineseName, englishName }) {
   ctx.font = "700 120px NotoSansEN, Arial, sans-serif";
   ctx.fillText(en, width / 2, height / 2 + 180);
 
-  // 英文（明确使用英文族）
-  ctx.font = "700 100px NotoSansEN";
-  ctx.fillText(en, width / 2, height / 2 + 180);
-
   const buf = canvas.toBuffer("image/png");
-  console.log("✅ PNG bytes:", buf.length, { cn, en });
-  console.log("✅ PNG generated bytes:", buf.length);
+  console.log("✅ PNG generated bytes:", buf.length, { cn, en });
   return buf;
 }
 
-// ---------------- Main webhook ----------------
 // -------------------- Main handler --------------------
 export default async function handler(req, res) {
   // Stripe webhook must be POST
@@ -251,14 +205,15 @@ export default async function handler(req, res) {
 
   let event;
   try {
-    const rawBody = await getRawBody(req);
+    // Keep raw body for Stripe signature verification
+    const rawBody = await getRawBody(req, { encoding: null });
     event = stripe.webhooks.constructEvent(
       rawBody,
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (err) {
-    console.error("❌ Signature verification failed:", err?.message);
+    console.error("❌ Signature verification failed:", err?.message || err);
     return res.status(400).send("Invalid signature");
   }
 
@@ -276,20 +231,13 @@ export default async function handler(req, res) {
 
   const sheets = getSheetsClient();
 
-  // --- Debug mode behavior:
-  // ✅ 不因为已 delivered 就直接 return（避免你以为没执行）
-  // —— 调试阶段：仍然写表，但不因为 delivered/duplicate 直接 return —— //
+  // Debug-mode behavior: always (re)generate, but still write/update sheet
   let rowIndex = await findRowIndexBySessionId(sheets, sessionId);
   if (!rowIndex) {
     await appendOrderRow(sheets, { sessionId, email, status: "processing" });
     rowIndex = await findRowIndexBySessionId(sheets, sessionId);
   } else {
     const status = await getStatusByRow(sheets, rowIndex);
-    console.log(
-      "⚠️ existingRow status:",
-      status,
-      "(debug mode: will still generate)"
-    );
     console.log("⚠️ existing row status:", status, "(debug: still generate)");
     await updateOrderStatus(sheets, rowIndex, "processing", "");
   }
@@ -300,12 +248,10 @@ export default async function handler(req, res) {
 
     const pngBuffer = generateNamePNG({ chineseName, englishName, sessionId });
 
-    // ✅ addRandomSuffix 防止同名缓存，确保你每次打开都是新图
     const blob = await put(`orders/${sessionId}.png`, pngBuffer, {
       access: "public",
       contentType: "image/png",
-      addRandomSuffix: true,
-      addRandomSuffix: true, // 防止同名覆盖导致一直打开旧图
+      addRandomSuffix: true, // prevent caching/overwrite confusion
     });
 
     console.log("✅ Blob URL:", blob.url);
@@ -316,7 +262,7 @@ export default async function handler(req, res) {
       received: true,
       delivered: true,
       pngUrl: blob.url,
-      note: "debug-mode: always generate; fonts from repo /public/fonts",
+      note: "debug-mode: always generate; fonts from /public/fonts",
     });
   } catch (err) {
     console.error("❌ Delivery failed:", err);
