@@ -1,0 +1,12 @@
+node_modules/
+.vercel/
+.env
+.env.*
+.DS_Store
+
+# backups
+*.bak
+*.bak2
+
+# npm lock (如你不打算提交 lock)
+package-lock.json
