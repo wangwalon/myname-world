@@ -9,6 +9,7 @@
 import Stripe from "stripe";
 import getRawBody from "raw-body";
 import { google } from "googleapis";
+import path from "path";  
 import canvasPkg from "@napi-rs/canvas";
 const { createCanvas, registerFont } = canvasPkg;
 import { put } from "@vercel/blob";
