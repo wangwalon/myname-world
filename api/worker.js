@@ -1,19 +1,27 @@
 // api/worker.js
-// Production Worker: processes status=queued rows and MUST render PNG via Cloud Run.
-// Flow: queued -> processing -> delivered (with png_url) OR failed (with error)
+// Queue Worker (NO canvas). Processes Google Sheet rows with status=queued.
+// Flow: queued -> processing -> delivered/failed
+//
+// Optional: if you set RENDER_URL, this worker will call it to get { pngUrl }.
+// Security: protect with CRON_SECRET (Bearer token).
 
 import { google } from "googleapis";
 
-export const config = { api: { bodyParser: true } };
+export const config = {
+  api: { bodyParser: true },
+};
 
 // -------------------- env --------------------
 const SHEET_ID = process.env.SHEET_ID;
 const SHEET_NAME = process.env.SHEET_NAME || "orders_state";
 const SA_JSON = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
 
-const CRON_SECRET = process.env.CRON_SECRET; // optional protect
-const RENDER_URL = process.env.RENDER_URL || ""; // REQUIRED in prod
-const RENDER_AUTH = process.env.RENDER_AUTH || ""; // recommended
+const CRON_SECRET = process.env.CRON_SECRET; // optional
+const RENDER_URL = process.env.RENDER_URL || "";
+const RENDER_AUTH = process.env.RENDER_AUTH || "";
+
+// Columns:
+// A sessionId | B email | C status | D created_at | E updated_at | F error | G png_url
 
 // -------------------- helpers --------------------
 function json(res, code, body) {
@@ -56,14 +64,23 @@ async function readAllRows(sheets) {
   return resp.data.values || [];
 }
 
-async function updateRowCells(sheets, rowIndex, { status, updatedAt, error, pngUrl }) {
+async function updateRowCells(
+  sheets,
+  rowIndex,
+  { status, updatedAt, error, pngUrl }
+) {
   const data = [];
-  if (status != null) data.push({ range: `${SHEET_NAME}!C${rowIndex}:C${rowIndex}`, values: [[status]] });
-  if (updatedAt != null) data.push({ range: `${SHEET_NAME}!E${rowIndex}:E${rowIndex}`, values: [[updatedAt]] });
-  if (error != null) data.push({ range: `${SHEET_NAME}!F${rowIndex}:F${rowIndex}`, values: [[error]] });
-  if (pngUrl != null) data.push({ range: `${SHEET_NAME}!G${rowIndex}:G${rowIndex}`, values: [[pngUrl]] });
 
-  if (data.length === 0) return;
+  if (status != null)
+    data.push({ range: `${SHEET_NAME}!C${rowIndex}`, values: [[status]] });
+  if (updatedAt != null)
+    data.push({ range: `${SHEET_NAME}!E${rowIndex}`, values: [[updatedAt]] });
+  if (error != null)
+    data.push({ range: `${SHEET_NAME}!F${rowIndex}`, values: [[error]] });
+  if (pngUrl != null)
+    data.push({ range: `${SHEET_NAME}!G${rowIndex}`, values: [[pngUrl]] });
+
+  if (!data.length) return;
 
   await sheets.spreadsheets.values.batchUpdate({
     spreadsheetId: SHEET_ID,
@@ -71,82 +88,47 @@ async function updateRowCells(sheets, rowIndex, { status, updatedAt, error, pngU
   });
 }
 
-function redactUrl(u) {
-  try {
-    const url = new URL(u);
-    return `${url.protocol}//${url.host}${url.pathname}`;
-  } catch {
-    return "";
-  }
-}
-
 async function callRenderer({ sessionId, email, metadata }) {
-  // Production requirement: must have RENDER_URL
-  requireEnv("RENDER_URL", RENDER_URL);
+  if (!RENDER_URL) return "";
 
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), 15000); // 15s timeout
+  const resp = await fetch(RENDER_URL, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(RENDER_AUTH ? { authorization: `Bearer ${RENDER_AUTH}` } : {}),
+    },
+    body: JSON.stringify({ sessionId, email, metadata }),
+  });
 
-  try {
-    const resp = await fetch(RENDER_URL, {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "content-type": "application/json",
-        ...(RENDER_AUTH ? { authorization: `Bearer ${RENDER_AUTH}` } : {}),
-      },
-      body: JSON.stringify({ sessionId, email, metadata }),
-    });
-
-    if (!resp.ok) {
-      const text = await resp.text().catch(() => "");
-      throw new Error(`Renderer failed (${resp.status}): ${text.slice(0, 300)}`);
-    }
-
-    const data = await resp.json().catch(() => ({}));
-    const pngUrl = data?.pngUrl || "";
-    if (!pngUrl) throw new Error("Renderer returned empty pngUrl");
-    return pngUrl;
-  } catch (e) {
-    if (e?.name === "AbortError") throw new Error("Renderer timeout (15s)");
-    throw e;
-  } finally {
-    clearTimeout(t);
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => "");
+    throw new Error(`Renderer failed (${resp.status}): ${text.slice(0, 300)}`);
   }
+
+  const data = await resp.json();
+  if (!data?.pngUrl) throw new Error("Renderer returned empty pngUrl");
+  return data.pngUrl;
 }
 
 // -------------------- main --------------------
 export default async function handler(req, res) {
   const BUILD = process.env.VERCEL_GIT_COMMIT_SHA || "dev";
-  const reqId = req.headers["x-vercel-id"] || req.headers["x-vercel-trace-id"] || "unknown";
+  const reqId =
+    req.headers["x-vercel-id"] ||
+    req.headers["x-vercel-trace-id"] ||
+    "unknown";
 
   try {
-    // auth (optional)
     if (CRON_SECRET) {
       const auth = req.headers.authorization || "";
       if (auth !== `Bearer ${CRON_SECRET}`) {
-        return json(res, 401, { build: BUILD, reqId, ok: false, error: "Unauthorized" });
+        return json(res, 401, { build: BUILD, reqId, error: "Unauthorized" });
       }
     }
 
     const sheets = getSheetsClient();
-
     const limit = Math.max(1, Math.min(10, Number(req.query.limit || 3)));
     const dryRun = String(req.query.dry || "0") === "1";
-
-    // Show renderer info without leaking secrets
-    const rendererUsed = Boolean(RENDER_URL);
-    const rendererUrlSafe = rendererUsed ? redactUrl(RENDER_URL) : "";
-
-    console.log("[worker] start", {
-      build: BUILD,
-      reqId,
-      limit,
-      dryRun,
-      rendererUsed,
-      rendererUrlSafe,
-      hasRendererAuth: Boolean(RENDER_AUTH),
-    });
 
     const rows = await readAllRows(sheets);
 
@@ -170,8 +152,11 @@ export default async function handler(req, res) {
         ok: true,
         processed: 0,
         failed: 0,
-        rendererUsed,
-        rendererUrlSafe,
+        rendererUsed: Boolean(RENDER_URL),
+        rendererUrlSafe: RENDER_URL || "",
+        // ★ DEBUG（新增）
+        hasRendererAuth: Boolean(RENDER_AUTH),
+        rendererAuthLen: (RENDER_AUTH || "").length,
       });
     }
 
@@ -182,8 +167,11 @@ export default async function handler(req, res) {
         ok: true,
         dryRun: true,
         wouldProcess: picked,
-        rendererUsed,
-        rendererUrlSafe,
+        rendererUsed: Boolean(RENDER_URL),
+        rendererUrlSafe: RENDER_URL || "",
+        // ★ DEBUG（新增）
+        hasRendererAuth: Boolean(RENDER_AUTH),
+        rendererAuthLen: (RENDER_AUTH || "").length,
       });
     }
 
@@ -193,19 +181,18 @@ export default async function handler(req, res) {
 
     for (const job of picked) {
       const { rowIndex, sessionId, email } = job;
-
       try {
         await updateRowCells(sheets, rowIndex, {
           status: "processing",
           updatedAt: nowIso(),
           error: "",
-          pngUrl: "", // clear old value if any
         });
 
-        // If you later store metadata in sheet, populate it here.
-        const metadata = {};
-
-        const pngUrl = await callRenderer({ sessionId, email, metadata });
+        const pngUrl = await callRenderer({
+          sessionId,
+          email,
+          metadata: {},
+        });
 
         await updateRowCells(sheets, rowIndex, {
           status: "delivered",
@@ -216,23 +203,15 @@ export default async function handler(req, res) {
 
         processed++;
         results.push({ sessionId, rowIndex, ok: true, pngUrl });
-        console.log("[worker] delivered", { sessionId, rowIndex, pngUrl });
       } catch (err) {
         failed++;
-        const msg = err?.message ? String(err.message).slice(0, 500) : "unknown_error";
-
-        try {
-          await updateRowCells(sheets, rowIndex, {
-            status: "failed",
-            updatedAt: nowIso(),
-            error: msg,
-          });
-        } catch (sheetErr) {
-          console.error("[worker] sheet update failed", { sessionId, rowIndex, message: sheetErr?.message });
-        }
-
+        const msg = String(err?.message || "unknown_error").slice(0, 500);
+        await updateRowCells(sheets, rowIndex, {
+          status: "failed",
+          updatedAt: nowIso(),
+          error: msg,
+        });
         results.push({ sessionId, rowIndex, ok: false, error: msg });
-        console.error("[worker] job failed", { sessionId, rowIndex, message: msg });
       }
     }
 
@@ -243,11 +222,21 @@ export default async function handler(req, res) {
       processed,
       failed,
       results,
-      rendererUsed,
-      rendererUrlSafe,
+      rendererUsed: Boolean(RENDER_URL),
+      rendererUrlSafe: RENDER_URL || "",
+      // ★ DEBUG（新增）
+      hasRendererAuth: Boolean(RENDER_AUTH),
+      rendererAuthLen: (RENDER_AUTH || "").length,
     });
   } catch (err) {
-    console.error("[worker] FATAL", { message: err?.message, stack: err?.stack });
-    return json(res, 500, { build: BUILD, reqId, ok: false, error: err?.message || "fatal_worker_error" });
+    return json(res, 500, {
+      build: BUILD,
+      reqId,
+      ok: false,
+      error: err?.message || "fatal_worker_error",
+      // ★ DEBUG（新增）
+      hasRendererAuth: Boolean(RENDER_AUTH),
+      rendererAuthLen: (RENDER_AUTH || "").length,
+    });
   }
 }
