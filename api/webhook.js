@@ -115,7 +115,9 @@ export default async function handler(req, res) {
     const email = norm(session.customer_details?.email || session.customer_email);
 
     if (!sessionId) return res.status(400).json({ ok: false, error: "Missing session.id" });
-    if (!email) return res.status(400).json({ ok: false, error: "Missing customer email" });
+
+    // ✅ CHANGED (line): avoid Stripe retries if email is missing
+    if (!email) return res.status(200).json({ ok: true, ignored: true, reason: "Missing customer email", sessionId });
 
     const sheets = getSheetsClient();
     const rows = await readAllRows(sheets);
@@ -142,6 +144,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ ok: true, enqueued: true, sessionId });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: e?.message || "webhook_error" });
+    // ✅ CHANGED (line): avoid Stripe retries on transient failures
+    return res.status(200).json({ ok: false, error: e?.message || "webhook_error" });
   }
 }
