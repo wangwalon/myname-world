@@ -15,7 +15,7 @@ export default async function handler(req, res) {
       payment_method_types: ["card"],
       line_items: [
         {
-          price: "price_1Sm1e7JJuAH8Vmqu2YivzLJu", // ← 换成你自己的 Price ID
+          price: process.env.STRIPE_PRICE_ID,
           quantity: 1,
         },
       ],
