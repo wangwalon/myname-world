@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Get Your Chinese Name Kit</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; }
+      label { display:block; margin: 14px 0 6px; font-weight: 600; }
+      input, select, button { width: 100%; padding: 10px 12px; font-size: 16px; }
+      button { margin-top: 18px; cursor: pointer; }
+      .hint { color:#555; font-size: 14px; margin-top: 6px; }
+      .err { color:#b00020; margin-top: 10px; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <h1>Chinese Name Kit</h1>
+    <p class="hint">Enter your name and preferences, then you’ll be redirected to secure checkout.</p>
+
+    <label for="name_input">Your name (required)</label>
+    <input id="name_input" placeholder="e.g., Michael" autocomplete="name" />
+
+    <label for="pref_gender">Gender vibe (optional)</label>
+    <select id="pref_gender">
+      <option value="neutral" selected>Neutral</option>
+      <option value="masculine">Masculine</option>
+      <option value="feminine">Feminine</option>
+    </select>
+
+    <label for="pref_style">Style (optional)</label>
+    <select id="pref_style">
+      <option value="modern" selected>Modern</option>
+      <option value="traditional">Traditional</option>
+      <option value="wuxia">Wuxia</option>
+    </select>
+
+    <label for="pref_length">Name length (optional)</label>
+    <select id="pref_length">
+      <option value="3" selected>3 characters (surname + 2)</option>
+      <option value="2">2 characters (surname + 1)</option>
+    </select>
+
+    <button id="payBtn">Continue to Checkout</button>
+    <div id="err" class="err"></div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+
+      $("payBtn").addEventListener("click", async () => {
+        $("err").textContent = "";
+        const name_input = $("name_input").value.trim();
+        const pref_gender = $("pref_gender").value;
+        const pref_style = $("pref_style").value;
+        const pref_length = $("pref_length").value;
+
+        if (!name_input) {
+          $("err").textContent = "Please enter your name.";
+          return;
+        }
+
+        try {
+          const resp = await fetch("/api/create-checkout-session", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ name_input, pref_gender, pref_style, pref_length }),
+          });
+          const data = await resp.json();
+          if (!resp.ok) throw new Error(data?.error || "Failed to create checkout session");
+          if (!data?.url) throw new Error("Missing checkout url");
+          window.location.href = data.url;
+        } catch (e) {
+          $("err").textContent = String(e?.message || e);
+        }
+      });
+    </script>
+  </body>
+</html>
