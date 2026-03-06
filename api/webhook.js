@@ -54,24 +54,29 @@ function getSheetsClient() {
 
   return google.sheets({ version: "v4", auth });
 }
-
 async function readAllRows(sheets) {
   const range = `${SHEET_NAME}!A:N`;
+
   const resp = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range,
+    range: range,
   });
+
   return resp.data.values || [];
 }
 
+
 async function appendRow(sheets, values) {
   const range = `${SHEET_NAME}!A:N`;
+
   await sheets.spreadsheets.values.append({
     spreadsheetId: SHEET_ID,
-    range,
+    range: range,
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
-    requestBody: { values: [values] },
+    requestBody: {
+      values: [values],
+    },
   });
 }
 
