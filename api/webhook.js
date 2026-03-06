@@ -56,7 +56,7 @@ function getSheetsClient() {
 }
 
 async function readAllRows(sheets) {
-  const range = `${SHEET_NAME}!A:G`;
+  const range = `${SHEET_NAME}!A:N`;
   const resp = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
     range,
@@ -65,7 +65,7 @@ async function readAllRows(sheets) {
 }
 
 async function appendRow(sheets, values) {
-  const range = `${SHEET_NAME}!A:G`;
+  const range = `${SHEET_NAME}!A:N`;
   await sheets.spreadsheets.values.append({
     spreadsheetId: SHEET_ID,
     range,
